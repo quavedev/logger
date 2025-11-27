@@ -1,0 +1,40 @@
+{
+  "name": "@quave/logger",
+  "version": "1.0.0",
+  "description": "Framework-agnostic logger with Slack integration for Node.js and Bun",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "logger",
+    "logging",
+    "slack",
+    "nodejs",
+    "bun",
+    "console",
+    "debug"
+  ],
+  "author": "Quave <support@quave.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/quavedev/logger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/quavedev/logger/issues"
+  },
+  "homepage": "https://github.com/quavedev/logger#readme",
+  "dependencies": {
+    "slack-notify": "^2.0.7"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
