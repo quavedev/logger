@@ -270,31 +270,6 @@ import {
 } from '@quave/logger';
 ```
 
-## Migration from Meteor Logger
-
-If you're migrating from a Meteor-based logger:
-
-```javascript
-// Before (Meteor)
-import { logger } from '../../all/utils/logger';
-
-// After (@quave/logger)
-import { createLogger } from '@quave/logger';
-
-const logger = createLogger({
-  appName: 'my-app',
-  environment: process.env.NODE_ENV,
-  slack: {
-    enabled: process.env.SLACK_ENABLED === 'true',
-    webhookUrl: process.env.SLACK_WEBHOOK_URL,
-  },
-});
-
-// API is the same!
-logger.info('[API] Server started');
-logger.error('[API] Something failed', error);
-```
-
 ## Slack Message Format
 
 Messages sent to Slack include:
@@ -304,6 +279,10 @@ Messages sent to Slack include:
   - `appName`: Your application name
   - `errorMessage`, `errorReason`, `errorDetails`, `errorStack`: Error info (if error provided)
   - Any custom fields you provide
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 
