@@ -13,6 +13,8 @@
  * @property {string} [errorReason] - Error reason (for custom errors)
  * @property {string} [errorDetails] - Error details (for custom errors)
  * @property {string} [errorStack] - Error stack trace
+ * @property {boolean} [errorFormatInvalid] - True if error format was unexpected
+ * @property {string} [errorFormatError] - Description of format issue if present
  *
  * @example
  * const fields = extractErrorFields(new Error('Something failed'));
@@ -23,12 +25,85 @@ export function extractErrorFields(error) {
     return {};
   }
 
-  return {
-    ...(error.message && { errorMessage: error.message }),
-    ...(error.reason && { errorReason: error.reason }),
-    ...(error.details && { errorDetails: error.details }),
-    ...(error.stack && { errorStack: error.stack }),
-  };
+  try {
+    // Validate that error is an object-like structure
+    if (typeof error !== 'object') {
+      return {
+        errorFormatInvalid: true,
+        errorFormatError: `Expected error to be an object, but received ${typeof error}`,
+        errorRawValue: String(error),
+      };
+    }
+
+    // Handle null (typeof null === 'object' in JavaScript)
+    if (error === null) {
+      return {
+        errorFormatInvalid: true,
+        errorFormatError: 'Error object is null',
+      };
+    }
+
+    // Safely extract fields with type checking
+    const fields = {};
+    
+    if (error.message !== undefined) {
+      const messageValue = error.message;
+      if (typeof messageValue === 'string' || typeof messageValue === 'number') {
+        fields.errorMessage = String(messageValue);
+      } else {
+        fields.errorFormatInvalid = true;
+        fields.errorFormatError = 'error.message must be a string or number';
+        fields.errorRawMessage = String(messageValue);
+      }
+    }
+
+    if (error.reason !== undefined) {
+      const reasonValue = error.reason;
+      if (typeof reasonValue === 'string' || typeof reasonValue === 'number') {
+        fields.errorReason = String(reasonValue);
+      } else {
+        fields.errorFormatInvalid = true;
+        fields.errorFormatError = fields.errorFormatError 
+          ? `${fields.errorFormatError}; error.reason must be a string or number`
+          : 'error.reason must be a string or number';
+        fields.errorRawReason = String(reasonValue);
+      }
+    }
+
+    if (error.details !== undefined) {
+      const detailsValue = error.details;
+      if (typeof detailsValue === 'string' || typeof detailsValue === 'number') {
+        fields.errorDetails = String(detailsValue);
+      } else {
+        fields.errorFormatInvalid = true;
+        fields.errorFormatError = fields.errorFormatError 
+          ? `${fields.errorFormatError}; error.details must be a string or number`
+          : 'error.details must be a string or number';
+        fields.errorRawDetails = String(detailsValue);
+      }
+    }
+
+    if (error.stack !== undefined) {
+      const stackValue = error.stack;
+      if (typeof stackValue === 'string') {
+        fields.errorStack = stackValue;
+      } else {
+        fields.errorFormatInvalid = true;
+        fields.errorFormatError = fields.errorFormatError 
+          ? `${fields.errorFormatError}; error.stack must be a string`
+          : 'error.stack must be a string';
+      }
+    }
+
+    return fields;
+  } catch (extractionError) {
+    // If extraction itself fails, return a safe error indicator
+    return {
+      errorFormatInvalid: true,
+      errorFormatError: `Failed to extract error fields: ${extractionError.message}`,
+      errorRawValue: String(error),
+    };
+  }
 }
 
 /**

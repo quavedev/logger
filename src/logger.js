@@ -158,8 +158,14 @@ export function createLogger(config = {}) {
 
     // Fire and forget - don't block on transport delivery
     Promise.all(promises).catch((err) => {
+      // Provide detailed error information even if err.message is undefined
+      const errorMessage = err?.message || err?.toString() || String(err) || 'Unknown error';
+      const errorName = err?.name || err?.constructor?.name || 'Error';
       // eslint-disable-next-line no-console
-      console.error(`[Logger] Transport error: ${err.message}`);
+      console.error(
+        `[Logger] Transport error: ${errorMessage}`,
+        `\nError type: ${errorName}`
+      );
     });
   }
 

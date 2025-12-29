@@ -147,6 +147,95 @@ logger.errorBackground('[CRON] Sync job failed', error);
 logger.errorBackground('[QUEUE] Message processing failed');
 ```
 
+### Error Object Format
+
+When passing an error object to `logger.error()` or `logger.errorBackground()`, the logger expects a standard Error object or an object with compatible properties. The logger will extract the following fields:
+
+**Expected Error Object Structure:**
+
+```javascript
+{
+  message?: string | number,    // Error message (required for standard Error objects)
+  reason?: string | number,      // Custom error reason (optional)
+  details?: string | number,     // Custom error details (optional)
+  stack?: string                  // Stack trace (optional, usually auto-generated)
+}
+```
+
+**Valid Error Examples:**
+
+```javascript
+// Standard Error object (recommended)
+try {
+  throw new Error('Something went wrong');
+} catch (error) {
+  logger.error('[API] Operation failed', error);
+}
+
+// Custom error object with reason/details
+const customError = {
+  message: 'Validation failed',
+  reason: 'Invalid input',
+  details: 'Email format is incorrect',
+  stack: new Error().stack
+};
+logger.error('[API] Validation error', customError);
+
+// Error with just message
+logger.error('[API] Failed', { message: 'Connection timeout' });
+```
+
+**Invalid Error Formats:**
+
+The logger will detect and handle invalid error formats gracefully. If an error object has unexpected types or structure, a fallback message will be sent to Slack explaining the format issue:
+
+```javascript
+// ❌ These will trigger format warnings:
+logger.error('[API] Failed', 'string error');           // Error is not an object
+logger.error('[API] Failed', null);                     // Error is null
+logger.error('[API] Failed', { message: {} });          // message is not string/number
+logger.error('[API] Failed', { reason: [] });           // reason is not string/number
+logger.error('[API] Failed', { stack: 123 });           // stack is not string
+```
+
+When an invalid format is detected:
+- The original error message is still sent to Slack
+- A warning is included explaining the format issue
+- The raw error value is included for debugging
+- The error type and format error details are logged
+
+**Best Practices:**
+
+1. **Always use Error objects** when possible:
+   ```javascript
+   try {
+     // your code
+   } catch (error) {
+     logger.error('[API] Operation failed', error); // ✅ Good
+   }
+   ```
+
+2. **For custom errors**, ensure properties are strings or numbers:
+   ```javascript
+   const customError = {
+     message: String(errorMessage),  // ✅ Convert to string
+     reason: String(reason),         // ✅ Convert to string
+     details: JSON.stringify(data),  // ✅ Serialize objects
+   };
+   logger.error('[API] Custom error', customError);
+   ```
+
+3. **Avoid passing non-object types** directly:
+   ```javascript
+   // ❌ Bad
+   logger.error('[API] Failed', 'error string');
+   logger.error('[API] Failed', 404);
+   
+   // ✅ Good
+   logger.error('[API] Failed', new Error('error string'));
+   logger.error('[API] Failed', { message: 'Status code: 404' });
+   ```
+
 #### `logger.debug(filterText, ...args)`
 Debug messages (only shown when debug mode is enabled and filter matches).
 
@@ -278,7 +367,18 @@ Messages sent to Slack include:
 - **fields**: Structured data including:
   - `appName`: Your application name
   - `errorMessage`, `errorReason`, `errorDetails`, `errorStack`: Error info (if error provided)
+  - `errorFormatInvalid`, `errorFormatError`, `errorRawValue`: Error format validation info (if format is invalid)
   - Any custom fields you provide
+
+**Error Format Handling:**
+
+If an error object has an unexpected format, the logger will:
+- Still send the original message to Slack
+- Include a warning explaining the format issue
+- Add fields like `errorFormatIssue`, `errorType`, and `errorRawValue` for debugging
+- Preserve the original message in `originalMessage` field
+
+This ensures that even when error objects are malformed, you'll still receive notifications in Slack with information about what went wrong.
 
 ## Changelog
 
