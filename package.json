@@ -1,6 +1,6 @@
 {
   "name": "@quave/logger",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Framework-agnostic logger with Slack integration for Node.js and Bun",
   "type": "module",
   "main": "src/index.js",

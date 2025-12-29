@@ -1,6 +1,14 @@
 # Changelog
 
+## [1.0.3] - 2025-12-29
+
+### Fixed
+- Fixed Slack channel requirement: channels are now optional and will use webhook's default channel if not specified
+- Removed auto-generated channel names when no channel is configured
+
 ## [1.0.2] - 2025-12-29
+
+## [1.0.1] - 2025-12-29
 
 ### Fixed
 - Fixed "Failed to send to Slack: undefined" errors by improving error handling

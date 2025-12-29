@@ -66,15 +66,13 @@ const logger = createLogger({
     },
     
     // Optional: custom channels per level
+    // If not specified, messages will be sent to the webhook's default channel
     channels: {
       info: '#app-logs',
       warn: '#app-warnings',
       error: '#app-errors',
       'error-bg': '#app-errors-background',
     },
-    
-    // Optional: prefix for auto-generated channel names
-    channelPrefix: 'myapp',
     
     // Skip Slack in development (default: true)
     skipInDevelopment: true,

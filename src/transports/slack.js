@@ -262,7 +262,7 @@ export class SlackTransport extends BaseTransport {
    *
    * @param {string} level - Log level
    * @param {string} [customChannel] - Override channel
-   * @returns {string|null} Channel name with # prefix
+   * @returns {string|undefined} Channel name with # prefix, or undefined to use webhook default
    */
   getChannel(level, customChannel) {
     if (customChannel) {
@@ -278,9 +278,8 @@ export class SlackTransport extends BaseTransport {
       return ch.startsWith('#') ? ch : `#${ch}`;
     }
 
-    // Generate default channel name with environment prefix
-    const envPrefix = getEnvironmentPrefix();
-    return `#${this.channelPrefix}-${envPrefix}${slackLevel}`;
+    // Return undefined to use webhook's default channel
+    return undefined;
   }
 
   /**
