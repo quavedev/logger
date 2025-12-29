@@ -8,8 +8,6 @@
 
 ## [1.0.2] - 2025-12-29
 
-## [1.0.1] - 2025-12-29
-
 ### Fixed
 - Fixed "Failed to send to Slack: undefined" errors by improving error handling
 - Fixed errors not being sent to Slack when error object format is invalid
