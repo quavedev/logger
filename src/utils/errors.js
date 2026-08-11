@@ -106,6 +106,22 @@ export function extractErrorFields(error) {
   }
 }
 
+function toPatternMatchText(value) {
+  if (value == null) {
+    return '';
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /**
  * Check if an error should be treated as a warning based on its message
  * Some errors are expected and shouldn't trigger alerts
@@ -124,8 +140,8 @@ export function shouldTreatAsWarning(error, patterns = []) {
     return false;
   }
 
-  const message = error.message || '';
-  const reason = error.reason || '';
+  const message = toPatternMatchText(error.message);
+  const reason = toPatternMatchText(error.reason);
 
   return patterns.some(
     (pattern) => message.includes(pattern) || reason.includes(pattern)
