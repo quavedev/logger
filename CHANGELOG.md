@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-08-12
+
 ### Fixed
 - Fixed `shouldTreatAsWarning` throwing when `error.reason` (or `error.message`) is a non-string value such as an object
 
