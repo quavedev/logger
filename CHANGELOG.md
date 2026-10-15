@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-15
+
+### Fixed
+- `warn(message, error, { customChannel })` now routes to `customChannel`. Before, the option was sent as a Slack field and the message went to the default warn channel
+- `warn` no longer prints the `{ customChannel, fields }` options object to the console
+- `warn` extracts Slack fields from Error-like objects (`message`/`reason`/`stack`) that are not `instanceof Error`
+- Object-valued Slack fields are sent as JSON instead of rendering as `[object Object]`
+- `createLogger({ environment })` no longer overwrites `process.env.NODE_ENV` for the whole process; the environment is kept per logger (and per Slack transport)
+
+### Added
+- `warn(message, contextObject)`: a plain context object is sent to Slack as one JSON `context` field (truncated at 2,000 characters)
+- `SlackTransport` `createClient` option to inject the Slack client (used by tests)
+- Test suite (`npm test`, runs on Node and Bun) and CI
+
 ## [1.0.4] - 2026-08-12
 
 ### Fixed

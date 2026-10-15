@@ -5,7 +5,10 @@
 
 import SlackNotify from 'slack-notify';
 import { BaseTransport, LogLevels } from './base.js';
-import { isDevelopment, getEnvironmentPrefix } from '../utils/environment.js';
+import {
+  getEnvironment,
+  ENVIRONMENT_DEVELOPMENT,
+} from '../utils/environment.js';
 
 /**
  * Slack-specific log levels
@@ -38,6 +41,9 @@ export class SlackTransport extends BaseTransport {
    * @param {boolean} [config.skipInDevelopment=true] - Skip sending in dev
    * @param {boolean} [config.enabled=true] - Enable/disable the transport
    * @param {string} [config.appName] - Application name for messages
+   * @param {string} [config.environment] - Environment; defaults to NODE_ENV
+   * @param {Function} [config.createClient] - Slack client factory
+   *   (`(webhookUrl) => ({ send })`); defaults to slack-notify
    */
   constructor(config = {}) {
     super({ ...config, name: 'slack' });
@@ -50,6 +56,12 @@ export class SlackTransport extends BaseTransport {
       config.skipInDevelopment !== undefined ? config.skipInDevelopment : true;
     this.enabled = config.enabled !== undefined ? config.enabled : true;
     this.appName = config.appName;
+    this.environment = config.environment;
+    this.createClient = config.createClient || SlackNotify;
+  }
+
+  isDevelopment() {
+    return (this.environment || getEnvironment()) === ENVIRONMENT_DEVELOPMENT;
   }
 
   /**
@@ -65,7 +77,7 @@ export class SlackTransport extends BaseTransport {
     }
 
     // Skip in development unless explicitly enabled
-    if (this.skipInDevelopment && isDevelopment()) {
+    if (this.skipInDevelopment && this.isDevelopment()) {
       return false;
     }
 
@@ -142,7 +154,7 @@ export class SlackTransport extends BaseTransport {
         fields: safeFields,
       };
 
-      const slack = SlackNotify(webhookUrl);
+      const slack = this.createClient(webhookUrl);
       await slack.send(data);
     } catch (err) {
       // Silent failure - don't let Slack issues break the application
@@ -228,7 +240,13 @@ export class SlackTransport extends BaseTransport {
 
     for (const [key, value] of Object.entries(fields)) {
       try {
-        sanitized[key] = sanitizeValue(value);
+        const safeValue = sanitizeValue(value);
+        // slack-notify renders each field with `value + ''`: an object would
+        // show as "[object Object]".
+        sanitized[key] =
+          safeValue !== null && typeof safeValue === 'object'
+            ? JSON.stringify(safeValue)
+            : safeValue;
       } catch (fieldError) {
         // If sanitization fails for a field, use a safe fallback
         sanitized[key] = `[Error sanitizing field: ${fieldError?.message || 'Unknown'}]`;

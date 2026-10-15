@@ -11,7 +11,55 @@ import {
   shouldTreatAsWarning,
   DEFAULT_WARNING_PATTERNS,
 } from './utils/errors.js';
-import { isDevelopment } from './utils/environment.js';
+import { getEnvironment, ENVIRONMENT_DEVELOPMENT } from './utils/environment.js';
+
+const MAX_CONTEXT_LENGTH = 2000;
+const WARN_OPTION_KEYS = new Set(['customChannel', 'fields']);
+
+const isPlainObject = (value) =>
+  value != null &&
+  typeof value === 'object' &&
+  Object.getPrototypeOf(value) === Object.prototype;
+
+const isErrorLike = (value) =>
+  value instanceof Error ||
+  (value != null &&
+    typeof value === 'object' &&
+    (value.message != null || value.reason != null || value.stack != null));
+
+// `{ customChannel, fields }` is the options object of `warn`. Anything else
+// in a plain object is context.
+const isWarnOptions = (value) =>
+  isPlainObject(value) &&
+  Object.keys(value).length > 0 &&
+  Object.keys(value).every((key) => WARN_OPTION_KEYS.has(key));
+
+/**
+ * Serialize a plain context object into one bounded Slack field
+ *
+ * @param {Object} context - Context passed as the second `warn` argument
+ * @returns {Object} `{ context }` field, or an empty object
+ */
+function getContextFields(context) {
+  if (!isPlainObject(context) || isErrorLike(context)) {
+    return {};
+  }
+  if (!Object.keys(context).length) {
+    return {};
+  }
+  let serialized;
+  try {
+    serialized = JSON.stringify(context);
+  } catch {
+    return {};
+  }
+  return {
+    context:
+      serialized.length > MAX_CONTEXT_LENGTH
+        ? `${serialized.slice(0, MAX_CONTEXT_LENGTH)}…`
+        : serialized,
+  };
+}
 
 /**
  * Check if debug mode is enabled for a given filter text
@@ -111,10 +159,10 @@ export function createLogger(config = {}) {
     transports: customTransports = [],
   } = config;
 
-  // Set up environment if provided
-  if (config.environment) {
-    process.env.NODE_ENV = config.environment;
-  }
+  // Resolved once per logger. Never written back to process.env: NODE_ENV
+  // changes how frameworks and libraries behave for the whole process.
+  const environment = config.environment || getEnvironment();
+  const isDevelopmentEnv = () => environment === ENVIRONMENT_DEVELOPMENT;
 
   // Initialize transports
   const transports = [
@@ -128,6 +176,7 @@ export function createLogger(config = {}) {
       new SlackTransport({
         ...slackConfig,
         appName,
+        environment,
       })
     );
   }
@@ -140,7 +189,14 @@ export function createLogger(config = {}) {
    *
    * @param {Object} params - Log parameters
    */
-  async function sendToTransports({ level, message, args, fields, error }) {
+  async function sendToTransports({
+    level,
+    message,
+    args,
+    fields,
+    error,
+    customChannel,
+  }) {
     const promises = transports
       .filter((transport) => transport.shouldHandle(level))
       .map((transport) =>
@@ -153,6 +209,7 @@ export function createLogger(config = {}) {
             ...extractErrorFields(error),
           },
           error,
+          customChannel,
         })
       );
 
@@ -198,24 +255,31 @@ export function createLogger(config = {}) {
      * Log warning messages (console + Slack in production)
      *
      * @param {string} message - Warning message
-     * @param {Error} [error] - Optional error object
+     * @param {Error|Object} [errorOrContext] - Optional Error, or a plain
+     *   context object (sent to Slack as one JSON `context` field)
      * @param {Object} [options] - Optional options
      * @param {string} [options.customChannel] - Custom Slack channel
      * @param {Object} [options.fields] - Additional fields for Slack
      */
     warn(...args) {
-      const message = args[0];
-      const error = args[1] instanceof Error ? args[1] : undefined;
-      const options = args[args.length - 1];
-      const customChannel = options?.customChannel;
-      const fields = options?.fields || {};
+      const [message, ...rest] = args;
+      const options = isWarnOptions(rest[rest.length - 1])
+        ? rest.pop()
+        : undefined;
+      const [errorOrContext] = rest;
+      const error = isErrorLike(errorOrContext) ? errorOrContext : undefined;
 
       sendToTransports({
         level: LogLevels.WARN,
         message,
-        args: args.slice(1),
-        fields: { ...fields, customChannel },
+        // The console prints the data, never the options object.
+        args: rest,
+        fields: {
+          ...(options?.fields || {}),
+          ...(!error && getContextFields(errorOrContext)),
+        },
         error,
+        customChannel: options?.customChannel,
       });
     },
 
@@ -231,7 +295,7 @@ export function createLogger(config = {}) {
      */
     error(...args) {
       if (!validateErrorArgs(args)) {
-        if (isDevelopment()) {
+        if (isDevelopmentEnv()) {
           return;
         }
       }
@@ -271,7 +335,7 @@ export function createLogger(config = {}) {
      */
     errorBackground(...args) {
       if (!validateErrorArgs(args)) {
-        if (isDevelopment()) {
+        if (isDevelopmentEnv()) {
           return;
         }
       }
