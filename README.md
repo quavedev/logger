@@ -46,7 +46,10 @@ import { createLogger } from '@quave/logger';
 const logger = createLogger({
   // Application identification
   appName: 'my-app',
-  environment: 'production', // 'development' | 'staging' | 'production'
+  // 'development' | 'staging' | 'production'. Defaults to NODE_ENV. Kept per
+  // logger: it never overwrites process.env.NODE_ENV. Slack is skipped in
+  // 'development' when skipInDevelopment is true.
+  environment: 'production',
 
   // Debug configuration
   debug: {
@@ -121,11 +124,19 @@ Warning messages to console and Slack (in production).
 ```javascript
 logger.warn('[API] Rate limit approaching');
 logger.warn('[API] Slow query detected', error);
-logger.warn('[API] Custom alert', error, { 
+logger.warn('[API] Retry scheduled', { jobId, attempt }); // context object
+logger.warn('[API] Custom alert', error, {
   customChannel: 'alerts',
   fields: { userId: '123' }
 });
 ```
+
+The second argument is either an Error (or Error-like object with `message`,
+`reason` or `stack`) or a plain context object. A context object is printed to
+the console and sent to Slack as one JSON `context` field, truncated at 2,000
+characters, so keep secrets and payloads out of it. The last argument is the
+options object when it only has `customChannel` and/or `fields` keys; it is
+never printed to the console.
 
 #### `logger.error(message, [error])`
 Error messages to console and Slack (in production).
